@@ -1,0 +1,18 @@
+<resources>
+
+    <!-- Your App Colors -->
+    <color name="primary">#016B61</color>
+    <color name="secondary">#70B2B2</color>
+    <color name="accent">#9ECFD4</color>
+    <color name="background_light">#E5E9C5</color>
+
+    <!-- Required Default Colors (Do NOT remove) -->
+    <color name="purple_200">#BB86FC</color>
+    <color name="purple_500">#6200EE</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="teal_700">#018786</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+
+</resources>

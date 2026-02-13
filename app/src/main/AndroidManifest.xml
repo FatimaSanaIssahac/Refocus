@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label=""
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyApplication"
+        tools:targetApi="31">
+        <activity
+            android:name=".HomePagerAdapter"
+            android:exported="false" />
+        <!-- Splash Screen (Launcher) -->
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:label=""
+            android:theme="@style/Theme.MyApplication">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity> <!-- Home Screen -->
+        <activity
+            android:name=".HomeActivity"
+            android:label=""
+            android:theme="@style/Theme.MyApplication" /> <!-- App Selection Screen -->
+        <activity
+            android:name=".AppSelectionActivity"
+            android:label=""
+            android:theme="@style/Theme.MyApplication" /> <!-- Moodboard Screen -->
+        <activity
+            android:name=".MoodboardActivity"
+            android:label=""
+            android:theme="@style/Theme.MyApplication" />
+    </application>
+
+</manifest>
