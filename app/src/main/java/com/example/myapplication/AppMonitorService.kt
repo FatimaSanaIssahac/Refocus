@@ -18,6 +18,9 @@ class AppMonitorService : Service() {
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
     private val handler = Handler(Looper.getMainLooper())
+    private var blockedPackageName: String? = null
+    private var lastDismissalTime: Long = 0
+    private val dismissalCooldownMs = 2000 // Don't re-show overlay for 5 seconds after dismissal
 
     private val checkRunnable = object : Runnable {
         override fun run() {
@@ -81,6 +84,12 @@ class AppMonitorService : Service() {
         // Ignore our own app (Refocus)
         if (packageName == this.packageName) return
 
+        // If a different app is now in foreground, close the overlay
+        if (overlayView != null && packageName != blockedPackageName) {
+            removeOverlay()
+            return
+        }
+
         // 🔥 CHECK YOUR SAVED LIMITS HERE
         val limits = LimitsStorage.getLimits(this)
 
@@ -89,7 +98,10 @@ class AppMonitorService : Service() {
 
                 val totalUsage = getTodayUsage(packageName)
                 if (totalUsage >= limit.limitMinutes * 60 * 1000) {
-                    showOverlay(limit.appName)
+                    // Only show overlay if not in cooldown period after dismissal
+                    if (System.currentTimeMillis() - lastDismissalTime >= dismissalCooldownMs) {
+                        showOverlay(limit.appName, packageName)
+                    }
                 }
             }
         }
@@ -118,9 +130,11 @@ class AppMonitorService : Service() {
         return appStats?.totalTimeInForeground ?: 0
     }
 
-    private fun showOverlay(appName: String) {
+    private fun showOverlay(appName: String, packageName: String) {
 
         if (overlayView != null) return
+
+        blockedPackageName = packageName
 
         val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         overlayView = inflater.inflate(R.layout.overlay_blocking, null)
@@ -141,7 +155,7 @@ class AppMonitorService : Service() {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         )
 
@@ -150,8 +164,46 @@ class AppMonitorService : Service() {
 
     private fun removeOverlay() {
         overlayView?.let {
-            windowManager.removeView(it)
+            try {
+                windowManager.removeView(it)
+            } catch (e: Exception) {
+                // View was already removed
+            }
             overlayView = null
+        }
+        
+        // Force close the blocked app when overlay is dismissed
+        blockedPackageName?.let { packageName ->
+            forceCloseApp(packageName)
+        }
+        
+        blockedPackageName = null
+        lastDismissalTime = System.currentTimeMillis()
+    }
+
+    private fun forceCloseApp(packageName: String) {
+        try {
+            // Use ActivityManager to close the app
+            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            activityManager.killBackgroundProcesses(packageName)
+            
+            // Also try to close running tasks
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val runningTasks = activityManager.getRunningAppProcesses()
+                for (processInfo in runningTasks ?: emptyList()) {
+                    if (processInfo.processName.contains(packageName)) {
+                        android.os.Process.killProcess(processInfo.pid)
+                        break
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // If ActivityManager approach doesn't work, try using am command
+            try {
+                Runtime.getRuntime().exec("am force-stop $packageName").waitFor()
+            } catch (e2: Exception) {
+                e2.printStackTrace()
+            }
         }
     }
 
