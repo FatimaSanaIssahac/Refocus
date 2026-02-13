@@ -2,5 +2,6 @@ package com.example.myapplication
 
 data class AppLimit(
     val appName: String,
-    var time: String
+    val packageName: String,
+    val limitMinutes: Int
 )

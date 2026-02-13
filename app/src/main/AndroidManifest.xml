@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
+    <!-- Permissions -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:allowBackup="true"
@@ -15,9 +21,13 @@
         android:theme="@style/Theme.MyApplication"
         tools:targetApi="31">
         <activity
-            android:name=".HomePagerAdapter"
+            android:name=".OverlayManager"
             android:exported="false" />
-        <!-- Splash Screen (Launcher) -->
+        <!-- Foreground Monitoring Service -->
+        <service
+            android:name=".AppMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" /> <!-- Splash Screen -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
@@ -28,18 +38,22 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity> <!-- Home Screen -->
+        </activity> <!-- Home -->
         <activity
             android:name=".HomeActivity"
             android:label=""
-            android:theme="@style/Theme.MyApplication" /> <!-- App Selection Screen -->
+            android:theme="@style/Theme.MyApplication" /> <!-- App Picker -->
         <activity
             android:name=".AppSelectionActivity"
             android:label=""
-            android:theme="@style/Theme.MyApplication" /> <!-- Moodboard Screen -->
+            android:theme="@style/Theme.MyApplication" /> <!-- Moodboard -->
         <activity
             android:name=".MoodboardActivity"
             android:label=""
+            android:theme="@style/Theme.MyApplication" /> <!-- (We won't use BlockingActivity anymore for overlay) -->
+        <activity
+            android:name=".BlockingActivity"
+            android:exported="false"
             android:theme="@style/Theme.MyApplication" />
     </application>
 

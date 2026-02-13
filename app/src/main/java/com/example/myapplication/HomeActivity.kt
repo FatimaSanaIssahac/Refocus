@@ -1,7 +1,9 @@
 package com.example.myapplication
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.text.InputType
 import android.view.ViewGroup
 import android.widget.EditText
@@ -14,32 +16,48 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 
 class HomeActivity : AppCompatActivity() {
+
     private lateinit var pagerAdapter: HomePagerAdapter
     private lateinit var viewPager: ViewPager2
 
-    // Modern Activity Result API (replaces onActivityResult)
+    // ----------------------------------
+    // Activity Result for App Picker
+    // ----------------------------------
     private val appPickerLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
 
             if (result.resultCode == RESULT_OK) {
+
                 val appName = result.data?.getStringExtra("appName")
-                if (appName != null) {
-                    showTimeInputDialog(appName)
+                val packageName = result.data?.getStringExtra("packageName")
+
+                if (appName != null && packageName != null) {
+                    showTimeInputDialog(appName, packageName)
                 }
             }
         }
 
+    // ----------------------------------
+    // onCreate
+    // ----------------------------------
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
 
+        // Defer permission requests to avoid disrupting UI setup
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        handler.postDelayed({
+            requestUsageAccess()
+            requestOverlayPermission()
+            startMonitoringService()
+        }, 500)
+
         viewPager = findViewById(R.id.viewPager)
-        val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+        val tabLayout = findViewById<com.google.android.material.tabs.TabLayout>(R.id.tabLayout)
         val fab = findViewById<ExtendedFloatingActionButton>(R.id.fabAdd)
 
         pagerAdapter = HomePagerAdapter(this)
         viewPager.adapter = pagerAdapter
-
 
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = if (position == 0) "Limits" else "Boards"
@@ -49,11 +67,7 @@ class HomeActivity : AppCompatActivity() {
             ViewPager2.OnPageChangeCallback() {
 
             override fun onPageSelected(position: Int) {
-                if (position == 0) {
-                    fab.text = "Add Limit"
-                } else {
-                    fab.text = "Add Board"
-                }
+                fab.text = if (position == 0) "Add Limit" else "Add Board"
             }
         })
 
@@ -67,15 +81,47 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun showTimeInputDialog(appName: String) {
+    // ----------------------------------
+    // Request Usage Permission
+    // ----------------------------------
+    private fun requestUsageAccess() {
+        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+    }
+
+    // ----------------------------------
+    // Request Overlay Permission
+    // ----------------------------------
+    private fun requestOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+            startActivity(intent)
+        }
+    }
+
+    // ----------------------------------
+    // Start Monitoring Service
+    // ----------------------------------
+    private fun startMonitoringService() {
+        val intent = Intent(this, AppMonitorService::class.java)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    // ----------------------------------
+    // Time Input Dialog
+    // ----------------------------------
+    private fun showTimeInputDialog(appName: String, packageName: String) {
 
         val builder = AlertDialog.Builder(this, R.style.CustomDialogTheme)
         builder.setTitle("Set time limit for $appName")
 
-        // Create container layout with padding
         val container = android.widget.LinearLayout(this)
         container.orientation = android.widget.LinearLayout.VERTICAL
-        container.setPadding(50, 20, 50, 0) // left, top, right, bottom
+        container.setPadding(50, 20, 50, 0)
 
         val input = EditText(this)
         input.inputType = InputType.TYPE_CLASS_NUMBER
@@ -85,10 +131,19 @@ class HomeActivity : AppCompatActivity() {
         builder.setView(container)
 
         builder.setPositiveButton("Set") { _, _ ->
-            val minutes = input.text.toString()
-            if (minutes.isNotEmpty()) {
-                pagerAdapter.limitsFragment.addNewLimit(
-                    AppLimit(appName, "$minutes minutes")
+            val minutesText = input.text.toString()
+
+            if (minutesText.isNotEmpty()) {
+
+                val minutes = minutesText.toInt()
+
+                val newLimit = AppLimit(appName, packageName, minutes)
+                pagerAdapter.limitsFragment.addNewLimit(newLimit)
+
+                // Persist limits
+                LimitsStorage.saveLimits(
+                    this,
+                    pagerAdapter.limitsFragment.getLimits()
                 )
             }
         }
@@ -97,6 +152,7 @@ class HomeActivity : AppCompatActivity() {
 
         val dialog = builder.create()
         dialog.show()
+
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)
             .setTextColor(getColor(R.color.primary))
 
@@ -108,6 +164,4 @@ class HomeActivity : AppCompatActivity() {
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
     }
-
-
 }

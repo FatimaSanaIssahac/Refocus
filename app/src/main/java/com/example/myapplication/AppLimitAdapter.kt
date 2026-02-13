@@ -31,7 +31,7 @@ class AppLimitAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = appLimits[position]
         holder.tvAppName.text = item.appName
-        holder.tvTime.text = item.time
+        holder.tvTime.text = "${item.limitMinutes} minutes"
     }
 
     override fun getItemCount(): Int = appLimits.size

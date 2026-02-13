@@ -25,6 +25,7 @@ class AppSelectionActivity : AppCompatActivity() {
 
                 val resultIntent = Intent()
                 resultIntent.putExtra("appName", selectedApp.appName)
+                resultIntent.putExtra("packageName", selectedApp.packageName)
                 setResult(RESULT_OK, resultIntent)
                 finish()
             }

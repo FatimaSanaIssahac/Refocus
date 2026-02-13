@@ -28,12 +28,15 @@ class LimitsFragment : Fragment() {
         recyclerView = view.findViewById(R.id.recyclerViewLimits)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        // ✅ THIS is where you add the new adapter version
         adapter = AppLimitAdapter(appLimits) { selectedItem, position ->
             showEditDeleteDialog(selectedItem, position)
         }
 
         recyclerView.adapter = adapter
+
+        // Load saved limits from SharedPreferences
+        appLimits.addAll(LimitsStorage.getLimits(requireContext()))
+        adapter.notifyDataSetChanged()
 
         return view
     }
@@ -41,6 +44,10 @@ class LimitsFragment : Fragment() {
     fun addNewLimit(limit: AppLimit) {
         appLimits.add(limit)
         adapter.notifyItemInserted(appLimits.size - 1)
+    }
+
+    fun getLimits(): List<AppLimit> {
+        return appLimits
     }
 
     // =========================
@@ -61,6 +68,8 @@ class LimitsFragment : Fragment() {
                 1 -> {
                     appLimits.removeAt(position)
                     adapter.notifyItemRemoved(position)
+                    // Persist changes
+                    LimitsStorage.saveLimits(requireContext(), appLimits)
                 }
             }
         }
@@ -72,17 +81,29 @@ class LimitsFragment : Fragment() {
 
         val input = EditText(requireContext())
         input.inputType = InputType.TYPE_CLASS_NUMBER
-        input.setText(item.time.replace(" minutes", ""))
+        input.setText(item.limitMinutes.toString())
 
         val builder = AlertDialog.Builder(requireContext())
         builder.setTitle("Edit time for ${item.appName}")
         builder.setView(input)
 
         builder.setPositiveButton("Update") { _, _ ->
-            val newTime = input.text.toString()
-            if (newTime.isNotEmpty()) {
-                item.time = "$newTime minutes"
+            val newTimeText = input.text.toString()
+
+            if (newTimeText.isNotEmpty()) {
+
+                val newMinutes = newTimeText.toInt()
+
+                // Replace entire object (since properties are val)
+                appLimits[position] = AppLimit(
+                    appName = item.appName,
+                    packageName = item.packageName,
+                    limitMinutes = newMinutes
+                )
+
                 adapter.notifyItemChanged(position)
+                // Persist changes
+                LimitsStorage.saveLimits(requireContext(), appLimits)
             }
         }
 
